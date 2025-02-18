@@ -2,20 +2,18 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Les attributs assignables en masse.
      *
-     * @var list<string>
+     * @var array
      */
     protected $fillable = [
         'name',
@@ -24,9 +22,9 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Les attributs qui doivent être cachés pour la sérialisation.
      *
-     * @var list<string>
+     * @var array
      */
     protected $hidden = [
         'password',
@@ -34,32 +32,28 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Les attributs qui doivent être castés.
      *
-     * @return array<string, string>
+     * @var array
      */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password'          => 'hashed',
+    ];
+
+    /**
+     * Relation : Un utilisateur peut appartenir à plusieurs projets.
+     */
+    public function projects()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
-
-
-    use HasFactory, Notifiable;
-
-    public function projects() {
         return $this->belongsToMany(Project::class)->withPivot('role');
     }
 
-    public function tasks() {
+    /**
+     * Relation : Un utilisateur peut avoir plusieurs tâches assignées.
+     */
+    public function tasks()
+    {
         return $this->hasMany(Task::class, 'assigned_to');
     }
-
-
-
-
-
-
 }
