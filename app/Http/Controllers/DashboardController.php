@@ -14,10 +14,19 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        // Récupérer les projets de l'utilisateur connecté, avec leurs tâches associées
-        $projects = Auth::user()->projects()->with('tasks')->get();
 
-        // Retourne la vue "dashboard" en passant la variable $projects
-        return view('dashboard', compact('projects'));
+        $user = Auth::user();
+
+
+         // Récupérer tous les projets auxquels l'utilisateur participe (avec la relation project)
+         $allProjects = $user->projects()->with('tasks')->get();
+
+        // Séparer les projets créés par l'utilisateur et ceux où il est simplement membre
+        $createdProjects = $allProjects->where('created_by', $user->id);
+        $participatingProjects = $allProjects->where('created_by', '!=', $user->id);
+
+         // Retourne la vue "dashboard" en passant la variable $projects
+        return view('dashboard', compact('createdProjects', 'participatingProjects'));
+
     }
 }

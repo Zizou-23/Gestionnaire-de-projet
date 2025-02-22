@@ -10,6 +10,7 @@
             @csrf
             <!-- On récupère l'id du projet depuis la query string -->
             <input type="hidden" name="project_id" value="{{ request('project_id') }}">
+            
             <div class="mb-4">
                 <label for="title" class="block text-gray-700 dark:text-gray-300 font-semibold">Titre de la Tâche</label>
                 <input type="text" name="title" id="title" class="w-full mt-1 p-2 border rounded dark:bg-gray-700 dark:text-white" required>
@@ -30,11 +31,27 @@
                     <option value="suspendue">Suspendue</option>
                 </select>
             </div>
+            
+            <!-- Afficher le champ d'assignation si $project existe -->
+            @if($project)
+                <div class="mb-4">
+                    <label for="assigned_to" class="block text-gray-700 dark:text-gray-300 font-semibold">Assigner à</label>
+                    <select name="assigned_to" id="assigned_to" class="w-full mt-1 p-2 border rounded dark:bg-gray-700 dark:text-white">
+                        <option value="">-- Non assigné --</option>
+                        @foreach($project->users as $member)
+                            <option value="{{ $member->id }}">{{ $member->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
             <div class="mb-4">
                 <label for="attachment" class="block text-gray-700 dark:text-gray-300 font-semibold">Fichiers joints (optionnel)</label>
                 <input type="file" name="attachment[]" id="attachment" multiple class="w-full mt-1 p-2 border rounded dark:bg-gray-700 dark:text-white">
             </div>
-            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">Créer la Tâche</button>
+            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
+                Créer la Tâche
+            </button>
         </form>
     </div>
 </x-app-layout>

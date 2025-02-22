@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Models\Project;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Notifications\TaskAssignedNotification;
 
 class TaskController extends Controller
 {
@@ -20,52 +23,47 @@ class TaskController extends Controller
 
     /**
      * Affiche le formulaire de création d'une nouvelle tâche.
-     */
-    public function create()
-    {
-        // Si la création de tâche se fait dans le contexte d'un projet, on peut récupérer project_id dans la query string.
-        $project_id = request('project_id');
-        return view('tasks.create', compact('project_id'));
+     */public function create(Request $request)
+{
+    // Récupérer l'ID du projet depuis la query string
+    $projectId = $request->query('project_id');
+
+    // Si project_id est fourni, récupérer le projet correspondant
+    $project = null;
+    if ($projectId) {
+        $project = Project::with('users')->find($projectId);
     }
+
+    // Retourner la vue en transmettant la variable $project (même si null)
+    return view('tasks.create', compact('project'));
+}
 
     /**
      * Enregistre une nouvelle tâche dans la base de données.
      */
     public function store(Request $request)
-    {
-        // Validation des données du formulaire
-        $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date'    => 'required|date',
-            'status'      => 'required|in:en cours,terminée,suspendue',
-            'project_id'  => 'required|exists:projects,id',
-            // Optionnel : 'assigned_to' si vous souhaitez spécifier un utilisateur assigné
-        ]);
+{
+    $validated = $request->validate([
+        'title'       => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'due_date'    => 'nullable|date',
+        'status'      => 'required|in:en cours,terminée,suspendue',
+        'project_id'  => 'required|exists:projects,id',
+        'assigned_to' => 'nullable|exists:users,id',
+    ]);
 
-        // Si le champ 'assigned_to' n'est pas renseigné, on assigne la tâche à l'utilisateur connecté
-        if (!isset($validated['assigned_to'])) {
-            $validated['assigned_to'] = Auth::id();
-        }
+    $task = Task::create($validated);
 
-        // Création de la tâche
-        $task = Task::create($validated);
-
-        // Gestion des fichiers joints (s'il y en a)
-        if ($request->hasFile('attachment')) {
-            foreach ($request->file('attachment') as $uploadedFile) {
-                // Stockage du fichier dans le dossier public (ex: storage/app/public/tasks/{id})
-                $path = $uploadedFile->store("tasks/{$task->id}", 'public');
-                // Création d'une entrée associée dans la table files via la relation définie dans le modèle Task
-                $task->files()->create([
-                    'file_path'   => $path,
-                    'uploaded_by' => Auth::id(),
-                ]);
-            }
-        }
-
-        return redirect()->route('tasks.index')->with('success', 'Tâche créée avec succès.');
+    // Envoi d’un e-mail si un utilisateur est assigné (voir section 2)
+    if (!empty($validated['assigned_to'])) {
+        $user = User::find($validated['assigned_to']);
+        $user->notify(new TaskAssignedNotification($task));
     }
+    
+
+    return redirect()->route('tasks.index')->with('success', 'Tâche créée avec succès.');
+}
+
 
     /**
      * Affiche les détails d'une tâche.
@@ -113,7 +111,17 @@ class TaskController extends Controller
             }
         }
 
-        return redirect()->route('tasks.index')->with('success', 'Tâche mise à jour avec succès.');
+             // Envoi d’un e-mail si un utilisateur est assigné (voir section 2)
+        if (!empty($validated['assigned_to'])) {
+            $user = User::find($validated['assigned_to']);
+            $user->notify(new TaskAssignedNotification($task));
+        }
+            // Si le statut a changé
+        if ($task->wasChanged('status')) {
+            broadcast(new TaskStatusUpdated($task));
+        }
+
+    return redirect()->route('tasks.index')->with('success', 'Tâche mise à jour.');
     }
 
     /**

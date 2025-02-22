@@ -30,24 +30,23 @@ class FileController extends Controller
      * Stocke un fichier téléchargé dans le stockage et crée son enregistrement dans la base de données.
      */
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'task_id'    => 'required|exists:tasks,id',
-            'attachment' => 'required|file',
-        ]);
+{
+    $validated = $request->validate([
+        'task_id'   => 'required|exists:tasks,id',
+        'attachment' => 'required|file',
+    ]);
 
-        $file = $request->file('attachment');
-        $path = $file->store("tasks/{$validated['task_id']}", 'public');
+    $filePath = $request->file('attachment')->store("tasks/{$validated['task_id']}", 'public');
 
-        // Création de l'enregistrement dans la table files
-        File::create([
-            'task_id'     => $validated['task_id'],
-            'file_path'   => $path,
-            'uploaded_by' => Auth::id(),
-        ]);
+    File::create([
+        'task_id'     => $validated['task_id'],
+        'file_path'   => $filePath,
+        'uploaded_by' => auth()->id(),
+    ]);
 
-        return redirect()->back()->with('success', 'Fichier téléchargé avec succès.');
-    }
+    return back()->with('success', 'Fichier uploadé avec succès.');
+}
+
 
     /**
      * Affiche les détails d'un fichier ou lance son téléchargement.
@@ -58,6 +57,15 @@ class FileController extends Controller
         // Téléchargement du fichier depuis le disque public
         return Storage::disk('public')->download($file->file_path);
     }
+
+    public function download(File $file)
+{
+    // Vérifier si l’utilisateur a le droit de télécharger (optionnel)
+    // if (!Gate::allows('download-file', $file)) { ... }
+
+    return Storage::disk('public')->download($file->file_path);
+}
+
 
     /**
      * Affiche le formulaire d'édition d'un fichier (rarement nécessaire).
